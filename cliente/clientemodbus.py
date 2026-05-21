@@ -74,3 +74,32 @@ class ClienteMODBUS():
 
         # Tipo inválido
         return False
+    def escreveFloat(self, addr, valor):
+        val_float = float(valor)
+        payload = self._cliente.convert_to_registers(val_float, data_type=self._cliente.DATATYPE.FLOAT32)
+        resp = self._cliente.write_registers(address=addr, values=payload, device_id=1)
+        return not resp.isError()
+
+    def lerFloat(self, addr):
+        resp = self._cliente.read_holding_registers(address=addr, count=2, device_id=1)
+        if resp and not resp.isError():
+            return self._cliente.convert_from_registers(resp.registers, data_type=self._cliente.DATATYPE.FLOAT32)
+        return None
+
+    def lerBitsRegistrador(self, addr):
+        valor = self.lerDado(1, addr)
+        if valor is not None:
+            return [(valor >> i) & 1 for i in range(16)]
+        return None
+
+    def escreveBitRegistrador(self, addr, bit_index, estado):
+        valor_atual = self.lerDado(1, addr)
+        if valor_atual is None:
+            return False
+            
+        if estado == 1:
+            novo_valor = valor_atual | (1 << bit_index)
+        if estado == 0:
+            novo_valor = valor_atual & ~(1 << bit_index)
+            
+        return self.escreveDado(1, addr, novo_valor)
