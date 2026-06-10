@@ -1,84 +1,183 @@
-from time import sleep
+import os
+import kivy
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.config import Config
+from kivy.clock import Clock
+from kivy.lang import Builder
 from clientemodbus import ClienteMODBUS
+
+os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
+
+# Integração da interface gráfica diretamente no código Python
+Builder.load_string('''
+<MyWidget>:
+    orientation: 'vertical'
+    padding: 10
+    spacing: 10
+    
+    BoxLayout:
+        size_hint_y: None
+        height: 40
+        spacing: 5
+
+        Label:
+            text: 'IP:'
+            size_hint_x: 0.3
+            
+        TextInput:
+            id: txt_ip
+            text: '127.0.0.1'
+            multiline: False
+            
+        Label:
+            text: 'Porta:'
+            size_hint_x: 0.3
+            
+        TextInput:
+            id: txt_porta
+            text: '502'
+            multiline: False
+            
+        Button:
+            id: btn_conectar
+            text: 'Conectar'
+            background_color: [0, 0, 1, 1]
+            on_press: root.toggle_conexao()
+
+    BoxLayout:
+        size_hint_y: None
+        height: 40
+        spacing: 5
+    
+        Label:
+            text: 'Endereço:'
+            size_hint_x: 0.3
+            
+        TextInput:
+            id: endereco_ip
+            text: '1000'
+            multiline: False
+
+    BoxLayout:
+        size_hint_y: None
+        height: 40
+        spacing: 5
+        
+        Label:
+            text: 'Novo valor:'
+            size_hint_x: 0.3
+            
+        TextInput:
+            id: novo_valor
+            text: '0'
+            multiline: False
+       
+        Button:
+            id: enviar
+            text: 'Confirmar'
+            background_color: [0, 1, 0, 1]
+            on_press: root.escrever_dados()
+          
+    BoxLayout:
+        size_hint_y: None
+        height: 40
+        spacing: 5
+        
+        Label:
+            id: lbl_valor_atual
+            text: 'Valor atual: ---'
+
+    BoxLayout:
+        size_hint_y: None
+        height: 40
+        spacing: 5
+      
+        Switch: 
+            id: leitura_recorrente
+            active: False
+            size_hint_x: 0.3
+            on_active: root.tratar_recorrente(self, self.active)
+            
+        Label:
+            text: 'Leitura recorrente'
+            text_size: self.size
+            halign: 'left'
+            valign: 'center'
+
+    Widget:
+''')
+
+class MyWidget(BoxLayout):
+    def __init__(self, cliente_inicial, **kwargs):
+        super().__init__(**kwargs)
+        self.conectado = False
+        self.evento_leitura = None
+        self.cliente = cliente_inicial
+
+    def toggle_conexao(self):
+        if not self.conectado:
+            ip = self.ids.txt_ip.text
+            porta = int(self.ids.txt_porta.text)
+            
+            self.cliente = ClienteMODBUS(server_ip=ip, porta=porta)
+            self.cliente.conectar()
+            
+            self.conectado = True
+            self.ids.btn_conectar.text = 'Desconectar'
+            self.ids.btn_conectar.background_color = [1, 0, 0, 1]
+        else:
+            if self.cliente:
+                self.cliente.fechar()
+            
+            self.conectado = False
+            self.ids.btn_conectar.text = 'Conectar'
+            self.ids.btn_conectar.background_color = [0, 0, 1, 1]
+            self.ids.leitura_recorrente.active = False
+
+    def ler_dados(self, *args):
+        try:
+            endereco = int(self.ids.endereco_ip.text)
+            # Lê Holding Register (tipo 1)
+            valor = self.cliente.lerDado(1, endereco)
+            self.ids.lbl_valor_atual.text = f'Valor atual: {valor}'
+        except Exception:
+            self.ids.lbl_valor_atual.text = 'Valor atual: Erro na leitura'
+
+    def escrever_dados(self):
+        try:
+            endereco = int(self.ids.endereco_ip.text)
+            valor = int(self.ids.novo_valor.text)
+            # Escreve Holding Register (tipo 1)
+            self.cliente.escreveDado(1, endereco, valor)
+        except Exception:
+            pass
+
+    def tratar_recorrente(self, checkbox, is_active):
+        if is_active:
+            self.evento_leitura = Clock.schedule_interval(self.ler_dados, 1.0)
+        else:
+            if self.evento_leitura:
+                self.evento_leitura.cancel()
+
+class BasicApp(App):
+    def __init__(self, cliente, **kwargs):
+        super().__init__(**kwargs)
+        self.cliente = cliente
+
+    def build(self):
+        return MyWidget(cliente_inicial=self.cliente)
+
 class InterfaceUsuario:
-    """
-    Classe para lidar com a interação do usuário via console
-    """
     def __init__(self, cliente):
         self.cliente = cliente
 
     def atendimento(self):
-        """
-        Método para atendimento do usuário
-        """
-        # Abre a conexão usando o método do cliente
-        self.cliente.conectar()
-        try:
-            atendimento = True
-            while atendimento:
-                sel = input("Opções: (1- Leitura | 2- Escrita | 3- Configuração | 4- Sair | 5- Float | 6- Bits): ")
-
-                if sel == '1':
-                    tipo = input("""Qual tipo de dado deseja ler? (1- Holding Register | 2- Coil | 3- Input Register | 4- Discrete Input): """)
-                    addr = input("Digite o endereço da tabela MODBUS: ")
-                    nvezes = input("Digite o número de vezes que deseja ler: ")
-                    for i in range(0, int(nvezes)):
-                        print(f"Leitura {i+1}: {self.cliente.lerDado(int(tipo), int(addr))}")
-                        sleep(self.cliente._scan_time)
-
-                elif sel == '2':
-                    tipo = input("""Qual tipo de dado deseja escrever? (1- Holding Register | 2- Coil): """)
-                    addr = input("Digite o endereço da tabela MODBUS: ")
-                    valor = input("Digite o valor que deseja escrever: ")
-                    ok = self.cliente.escreveDado(int(tipo), int(addr), int(valor))
-                    print("Escrita realizada." if ok else "Falha na escrita.")
-
-                elif sel == '3':
-                    scant = input("Digite o tempo de varredura desejado [s]: ")
-                    self.cliente._scan_time = float(scant)
-
-                elif sel == '4':
-                    atendimento = False
-
-                elif sel == '5':
-                    acao = input("1- Ler Float ou 2- Escrever Float? ")
-                    addr = int(input("Endereco inicial: "))
-                    
-                    if acao == '1':
-                        print("Float lido:", self.cliente.lerFloat(addr))
-                        
-                    if acao == '2':
-                        val = float(input("Digite o Float (ex: 3.14): "))
-                        self.cliente.escreveFloat(addr, val)
-                        print("Float escrito!")
-
-                elif sel == '6':
-                    acao = input("1- Ler os 16 bits ou 2- Mudar 1 bit? ")
-                    addr = int(input("Endereco (Holding Reg): "))
-                    
-                    if acao == '1':
-                        print("Bits:", self.cliente.lerBitsRegistrador(addr))
-                        
-                    if acao == '2':
-                        bit_idx = int(input("Qual bit (0-15)? "))
-                        estado = int(input("Novo estado (1 para ligar, 0 para desligar)? "))
-                        self.cliente.escreveBitRegistrador(addr, bit_idx, estado)
-                        print("Bit alterado!")
-
-                else:
-                    print("Seleção inválida")
-        except Exception as e:
-            print('Erro no atendimento: ', e.args)
-        finally:
-            # Fecha a conexão ao sair
-            self.cliente.fechar()
+        Config.set('graphics', 'resizable', True)
+        app = BasicApp(self.cliente)
+        app.run()
 
 if __name__ == "__main__":
-    # Instancia o cliente MODBUS
     meu_cliente = ClienteMODBUS(server_ip='127.0.0.1', porta=5020)
-    
-    # Instancia a interface passando o cliente como parâmetro
     minha_interface = InterfaceUsuario(meu_cliente)
-    
-    # Inicia o loop do menu
     minha_interface.atendimento()
