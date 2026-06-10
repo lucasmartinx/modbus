@@ -1,36 +1,32 @@
-# Aplicação Cliente-Servidor Modbus TCP
+# kivy-modbus
 
-Este repositório contém o desenvolvimento de uma aplicação cliente-servidor Modbus TCP escrita em Python, utilizando a biblioteca `pymodbus`. 
+# Interface Cliente Modbus TCP (Kivy)
 
-O projeto foi construído seguindo boas práticas de programação, mantendo uma **separação clara de responsabilidades** (a lógica de comunicação Modbus é totalmente isolada da interface do usuário) e implementando operações avançadas, como manipulação de números de ponto flutuante (floats) e bits individuais.
+Este projeto consiste em uma interface gráfica (GUI) desenvolvida em Python utilizando o framework **Kivy**. O objetivo da aplicação é fornecer um painel de controle simples e intuitivo para conectar e interagir com um servidor Modbus TCP.
 
-## 🚀 Funcionalidades
+## 🛠️ Recursos da Interface
 
-- **Servidor Modbus TCP:** Disponibiliza uma área de memória de *Holding Registers* para testes locais.
-- **Cliente Modbus TCP:** Classe dedicada exclusivamente à comunicação, conversão e manipulação de dados.
-- **Operações com Float (32 bits):** Empacotamento e desempacotamento de valores `float` ocupando 2 *Holding Registers* consecutivos.
-- **Leitura de Bits:** Mapeamento de um *Holding Register* para visualizar o estado individual de seus 16 bits.
-- **Escrita de Bit Individual:** Utiliza a técnica de *Read-Modify-Write* (máscaras binárias) para ligar ou desligar um único bit sem afetar os outros 15.
-- **Interface Interativa (CLI):** Um menu de linha de comando isolado para o usuário realizar testes.
+A tela da aplicação possui suporte para os seguintes recursos (front-end):
+* **Conexão:** Campos para inserção de IP e Porta, com botão de conectar.
+* **Endereçamento:** Campo para definir o endereço Modbus (Holding Registers, Coils, etc.) alvo da operação.
+* **Escrita de Dados:** Campo para inserir o novo valor e botão de confirmação para envio ao servidor.
+* **Leitura de Dados:** Exibição do valor atual lido do dispositivo conectado.
 
-## 📂 Estrutura do Repositório
+*Nota: A interface atual é o esqueleto (front-end) da aplicação. A lógica de back-end com as bibliotecas Modbus precisa ser acoplada aos métodos do Kivy.*
 
-```text
-meu_projeto_modbus/
-│
-├── README.md                  # Documentação do projeto
-├── requirements.txt           # Dependências do Python
-├── .gitignore                 # Arquivos ignorados pelo Git
-│
-├── servidor/
-│   └── servidor_modbus.py     # Script para iniciar o servidor local
-│
-├── cliente/
-│   ├── __init__.py            # Torna o diretório um pacote importável
-│   ├── cliente_modbus.py      # Lógica de comunicação Modbus isolada
-│   └── interface_usuario.py   # Menu interativo (CLI)
-│
-└── exemplos/
-    ├── exemplo_float.py       # Script demonstrando a operação com Floats
-    └── exemplo_bits.py        # Script demonstrando a operação com Bits individuais
-# modbus
+## 📁 Estrutura de Arquivos
+
+* `main.py`: Arquivo principal em Python contendo a lógica de inicialização da aplicação, configurações da janela e a classe do widget base (`MyWidget`).
+* `basic.kv`: Arquivo de Kivy Language (KV) contendo toda a estrutura visual, layout, cores, botões e campos de texto da interface.
+* `requirements.txt`: Arquivo com as dependências necessárias para rodar o projeto.
+
+## ⚙️ Pré-requisitos e Instalação
+
+Para rodar este projeto, você precisará do **Python** instalado em sua máquina.
+
+1. Clone ou baixe este repositório para o seu computador.
+2. Abra o terminal na pasta do projeto.
+3. (Opcional, mas recomendado) Crie um ambiente virtual:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # No Windows use: venv\Scripts\activate
